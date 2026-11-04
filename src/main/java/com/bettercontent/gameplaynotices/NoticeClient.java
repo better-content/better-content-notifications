@@ -17,19 +17,6 @@ import net.minecraftforge.fml.common.Mod;
 
 @Mod.EventBusSubscriber(modid = BetterGameplayNotices.MOD_ID, value = Dist.CLIENT)
 public final class NoticeClient {
-    private static final int THREAD_GOLD = 0xC6A15B;
-    private static final int COMBAT_RED = 0xC73E42;
-    private static final int COMBAT_DARK = 0x2A080D;
-    private static final int TRACE_COOL = 0xB8D4DD;
-    private record Treatment(int secondary, int title, int hint, int outline, float pitch, float volume) {}
-
-    private static Treatment treatment(NoticeTheme theme) {
-        return switch (theme) {
-            case THREADS -> new Treatment(THREAD_GOLD, 0xFFFFFF, 0xFFFFFF, 0x000000, 0.72f, 0.38f);
-            case COMBAT -> new Treatment(COMBAT_DARK, 0xF5B7B7, 0xE98185, 0x110307, 0.60f, 0.64f);
-            case TRACES -> new Treatment(TRACE_COOL, 0xE4EFF2, 0xB8D4DD, 0x071014, 0.82f, 0.24f);
-        };
-    }
     private static final NoticeQueue QUEUE = new NoticeQueue();
     private static long lastLiveFrame;
 
@@ -87,7 +74,7 @@ public final class NoticeClient {
         var frame = QUEUE.advance(delta);
         if (frame == null) return;
         if (frame.started()) {
-            var treatment = treatment(frame.notice().theme());
+            var treatment = NoticeStyle.forTheme(frame.notice().theme());
             minecraft.getSoundManager().play(SimpleSoundInstance.forUI(SoundEvents.BOOK_PAGE_TURN,
                     treatment.pitch(), treatment.volume()));
             if (BetterGameplayNotices.PLAYTEST.enabled("presentation")) {
@@ -104,11 +91,11 @@ public final class NoticeClient {
         float alpha = alpha(elapsed, NoticeQueue.duration(notice));
         int centerX = screenWidth / 2;
         int centerY = screenHeight / 3;
-        var treatment = treatment(notice.theme());
+        var treatment = NoticeStyle.forTheme(notice.theme());
         particles(graphics, notice.identity().hashCode(), elapsed, NoticeQueue.duration(notice), alpha,
                 centerX, centerY - 5, notice.accentRgb(),
                 treatment.secondary());
-        glyph(graphics, centerX - 4, centerY - 8, notice.theme(), alpha);
+        glyph(graphics, centerX - 4, centerY - 8, treatment, alpha);
         drawText(graphics, notice.title(), centerX, centerY + 2,
                 Math.max(0.55f, Math.min(0.72f,
                         (screenWidth - 24.0f) / Math.max(1, Minecraft.getInstance().font.width(notice.title())))),
@@ -124,20 +111,9 @@ public final class NoticeClient {
         return Math.max(0, (duration - elapsed) / 600.0f);
     }
 
-    private static void glyph(GuiGraphics graphics, int x, int y, NoticeTheme theme, float alpha) {
-        int[][] rows = switch (theme) {
-            case COMBAT -> new int[][] {{0, 7}, {1, 6}, {2, 5}, {3, 4}, {3, 4}, {2, 5}, {1, 6}, {0, 7}};
-            case THREADS -> new int[][] {{3, 4}, {2, 5}, {1, 3, 4, 6}, {0, 2, 5, 7},
-                    {0, 2, 5, 7}, {1, 3, 4, 6}, {2, 5}, {3, 4}};
-            // Two small staggered soles/toes, not the discovery or crossed-combat glyph.
-            case TRACES -> new int[][] {{1, 2}, {0, 1, 2}, {0, 1, 2}, {1, 2, 5, 6},
-                    {5, 6, 7}, {5, 6, 7}, {1, 2, 5, 6}, {}};
-        };
-        int rgb = switch (theme) {
-            case THREADS -> THREAD_GOLD;
-            case COMBAT -> COMBAT_RED;
-            case TRACES -> TRACE_COOL;
-        };
+    private static void glyph(GuiGraphics graphics, int x, int y, NoticeStyle.Definition style, float alpha) {
+        int[][] rows = style.glyph();
+        int rgb = style.accent();
         int color = (Math.round(alpha * 255) << 24) | rgb;
         for (int py = 0; py < rows.length; py++) {
             for (int px : rows[py]) graphics.fill(x + px, y + py, x + px + 1, y + py + 1, color);

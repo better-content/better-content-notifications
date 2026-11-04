@@ -4,5 +4,7 @@ package com.bettercontent.gameplaynotices;
 public enum NoticeTheme {
     THREADS,
     COMBAT,
-    TRACES
+    TRACES,
+    SPAWN,
+    LIFE
 }

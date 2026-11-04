@@ -9,6 +9,8 @@ import com.bettercontent.gameplaynotices.diagnostics.PlaytestLog;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Properties;
+import io.netty.buffer.Unpooled;
+import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.network.chat.Component;
 import org.junit.jupiter.api.Test;
 
@@ -80,6 +82,34 @@ final class NoticeQueueTest {
         assertEquals(new NoticeQueue.Frame(notice, 3_199, false), queue.advance(3_199));
         assertNull(queue.advance(1));
         assertEquals(0, queue.clear());
+    }
+
+    @Test
+    void newThemesHaveDistinctStylesAndSurviveTheNetworkCodec() {
+        var queue = new NoticeQueue();
+        for (var theme : List.of(NoticeTheme.SPAWN, NoticeTheme.LIFE)) {
+            var style = NoticeStyle.forTheme(theme);
+            var original = new GameplayNotice("guidance:" + theme, theme,
+                    Component.literal("Title"), Component.literal("Hint"));
+            assertEquals(8_000L, style.durationMs());
+            assertEquals(style.accent(), original.accentRgb());
+            assertEquals(8, style.glyph().length);
+            var bytes = new FriendlyByteBuf(Unpooled.buffer());
+            try {
+                NoticeCodec.encode(original, bytes);
+                var decoded = NoticeCodec.decode(bytes);
+                assertEquals(original.theme(), decoded.theme());
+                assertEquals(original.identity(), decoded.identity());
+                assertEquals(original.accentRgb(), decoded.accentRgb());
+                assertEquals(original.title().getString(), decoded.title().getString());
+                assertEquals(original.hint().getString(), decoded.hint().getString());
+                assertTrue(queue.add(decoded));
+            } finally {
+                bytes.release();
+            }
+        }
+        assertEquals(2, queue.size());
+        assertFalse(NoticeStyle.forTheme(NoticeTheme.SPAWN).accent() == NoticeStyle.forTheme(NoticeTheme.LIFE).accent());
     }
 
     @Test

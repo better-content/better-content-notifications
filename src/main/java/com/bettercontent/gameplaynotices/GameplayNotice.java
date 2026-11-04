@@ -5,11 +5,7 @@ import net.minecraft.network.chat.Component;
 
 public record GameplayNotice(String identity, NoticeTheme theme, Component title, Component hint, int accentRgb) {
     public GameplayNotice(String identity, NoticeTheme theme, Component title, Component hint) {
-        this(identity, theme, title, hint, switch (theme) {
-            case THREADS -> 0xC6A15B;
-            case COMBAT -> 0xC73E42;
-            case TRACES -> 0xB8D4DD;
-        });
+        this(identity, theme, title, hint, NoticeStyle.forTheme(theme).accent());
     }
 
     public GameplayNotice {

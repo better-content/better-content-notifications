@@ -8,16 +8,12 @@ import java.util.function.BooleanSupplier;
 import java.util.function.LongSupplier;
 
 final class NoticeQueue {
-    static final long COMBAT_DURATION_MS = 3_200L;
-    static final long THREAD_DURATION_MS = 8_000L;
-    static final long TRACE_DURATION_MS = 3_200L;
+    static final long COMBAT_DURATION_MS = NoticeStyle.forTheme(NoticeTheme.COMBAT).durationMs();
+    static final long THREAD_DURATION_MS = NoticeStyle.forTheme(NoticeTheme.THREADS).durationMs();
+    static final long TRACE_DURATION_MS = NoticeStyle.forTheme(NoticeTheme.TRACES).durationMs();
     static final long TRANSIENT_PENDING_MS = 5_000L;
     static long duration(GameplayNotice notice) {
-        return switch (notice.theme()) {
-            case THREADS -> THREAD_DURATION_MS;
-            case COMBAT -> COMBAT_DURATION_MS;
-            case TRACES -> TRACE_DURATION_MS;
-        };
+        return NoticeStyle.forTheme(notice.theme()).durationMs();
     }
     record Frame(GameplayNotice notice, long elapsedMs, boolean started) {}
 
